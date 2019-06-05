@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.fftpack import fft
 from scipy.fftpack import fftshift
+import scipy.io
 
+#****** Definimos las constantes y arrays para las funciones ******
 
 win_size=15
 BW_rg = 38e6
@@ -21,8 +23,6 @@ T_rg=10e-6
 fs = 50e6
 N=500
 time = np.r_[0:10e-6+1/fs:1/fs]
-#ind = np.r_[0:500+1:1]
-#frec = ind*BW_rg/2
 ind = np.r_[0:2*np.pi+(2*np.pi)/500:(2*np.pi)/500]
 
 def chirp_rg(time):
@@ -32,14 +32,15 @@ def chirp_rg(time):
 def tita(t, k1, k2):
 	return (t*t*k1 + t*k2)
 
-x = chirp_rg(tita(time, BW_rg/(2*T_rg),-BW_rg/2))
+#***** Evaluo la chirp en el array time *****
+chirp = chirp_rg(tita(time, BW_rg/(2*T_rg),-BW_rg/2))
 
-'''
-Compute and plot the spectrogram
-'''
+
+#***** Armo el espectrograma para la ventana tukey *****
+
 plt.figure()
 window = signal.tukey(win_size) # ventana de Tukey de 256 muestras
-f, t, Sxx = signal.spectrogram(x, fs, window,  return_onesided=False)
+f, t, Sxx = signal.spectrogram(chirp, fs, window,  return_onesided=False)
 f = np.fft.fftshift(f)
 Sxx = np.fft.fftshift(Sxx, axes=0)
 plt.pcolormesh(t,f,Sxx)
@@ -47,9 +48,7 @@ plt.title("Espectrograma Tukey")
 plt.ylabel('Frequency [Hz]')
 plt.xlabel('Time [sec]')
 
-'''
-Ploteo en tiempo y frecuencia de la ventana utilizada
-'''
+#***** Ploteo en tiempo la ventana utilizada *****
 plt.figure()
 plt.plot(window)
 plt.title("Tukey window")
@@ -70,20 +69,13 @@ plt.xlabel("Normalized frequency [cycles per sample]")
 '''
 
 
+#********** Ventana Hanning **********
 
+#***** Armo el espectrograma para la ventana tukey *****
 
-
-
-
-
-
-
-'''
-Ventana Hanning
-'''
 plt.figure()
-window = signal.hanning(win_size) # ventana de Tukey de 256 muestras
-f, t, Sxx = signal.spectrogram(x, fs, window,  return_onesided=False)
+window = signal.hanning(win_size)
+f, t, Sxx = signal.spectrogram(chirp, fs, window,  return_onesided=False)
 f = np.fft.fftshift(f)
 Sxx = np.fft.fftshift(Sxx, axes=0)
 plt.pcolormesh(t,f,Sxx)
@@ -91,6 +83,7 @@ plt.title("Espectrograma Hanning")
 plt.ylabel('Frequency [Hz]')
 plt.xlabel('Time [sec]')
 
+#***** Ploteo en tiempo la ventana utilizada *****
 plt.figure()
 plt.plot(window)
 plt.title("Hanning window")
