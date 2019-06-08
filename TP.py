@@ -1,4 +1,3 @@
-#from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import *
@@ -55,10 +54,10 @@ X1 = np.concatenate((chirp, zeros(len(chirp)-1,dtype=float)), axis=0, out=None)
 X1 = np.concatenate((zeros(len(chirp)-1,dtype=float),X1), axis=0, out=None)
 
 A1 = fft(np.flip(X1),2048)/(len(X1)/2.0) 
-A2 = fft(np.conjugate(chirp),2048)/(len(chirp)/2.0)
+chirp_conj_fft = fft(np.conjugate(chirp),2048)/(len(chirp)/2.0)
 
-A = ifft(A1*A2)
-A=A[500:] #le saco 500 puntos por la separacion ya que al invertir la chirp deberia quedar en tiempo negativo pero eso el python no lo ve
+A = ifft(A1*chirp_conj_fft)
+A=A[len(chirp)-1:] #le saco 500 puntos por la separacion ya que al invertir la chirp deberia quedar en tiempo negativo pero eso el python no lo ve
 
 if(graph_autocor==1):
 	plt.figure()
@@ -67,13 +66,13 @@ if(graph_autocor==1):
 	plt.title("Chirp")
 	plt.plot(chirp)
 
-	plt.figure()
+	#plt.figure()
 	plt.ylabel("Chirp2(t)")
 	plt.xlabel("Tiempo")
 	plt.plot(X1)
 
-	plt.figure()
-	A=abs(A)
+	#plt.figure()
+	A=abs(A)*400
 	plt.plot(A)
 	plt.title("Autocorrelacion")
 	plt.ylabel("IFFT(A1*A2)")
@@ -90,29 +89,51 @@ if(graph_autocor==1):
 
 #***** Verificacion de enfoque *****
 mat = scipy.io.loadmat('SAR_data_sint.mat')
-'''
-A = np.zeros( ( len(mat['data_sint'][:,0]), len(mat['data_sint'][0,:]) ), dtype=complex )/2.0 #armamos la matriz A del tamaño que voy a necesitar
+mat=mat['data_sint']
+mat=np.transpose(mat)
 
-for i in range(0,len(mat['data_sint'][:,0])-1):
-	
-	X1 = np.concatenate((mat['data_sint'][i,:], zeros(len(chirp)-1,dtype=float)), axis=0, out=None)
-	X1 = np.concatenate((zeros(len(chirp)-1,dtype=float),mat['data_sint'][i,:]), axis=0, out=None)
-	A1 = fft(np.flip(X1),2048)/(len(X1)/2.0) 
-	#print(type(ifft(A1*A2)))
-	A[i] = ifft(A1*A2)
-	#A[i]=A[i][500:]
-	break
-'''
+#mat = scipy.io.loadmat('SAR_data_sarat.mat')
+#mat=mat['data']
 
+matriz_cruz = np.zeros( ( mat.shape[0] , mat.shape[0] ),dtype=complex ) #armamos la matriz A del tamaño que voy a necesitar
+
+for i in range(0,mat.shape[0]-1):
+	fila = mat[i,:]
+	fila_flip_fft = fft(np.flip(fila),2048)/(len(fila)/2.0)
+	matriz_cruz[i,:] = ifft(fila_flip_fft*chirp_conj_fft)*1000# tiene tamaño 4250 x 2048
+'''
+matriz_cruz =matriz_cruz[:,int(ceil(1.5*len(chirp)))-1:]
+
+matriz_cruz = np.transpose(matriz_cruz)
+
+final = np.zeros( ( matriz_cruz.shape[0] , mat.shape[1] ), dtype=complex ) #armamos la matriz A del tamaño que voy a necesitar
+
+
+for i in range(0,matriz_cruz.shape[0]-1):
+	columna = matriz_cruz[i,:]
+	columna_flip_fft = fft(np.flip(columna),2048)/(len(columna)/2.0)
+	final[i,:] = ifft(columna_flip_fft*chirp_conj_fft)*1000# tiene tamaño 4250 x 2048
+
+print(fila_flip_fft.shape)
+'''
+'''
 X1 = np.concatenate((mat['data_sint'][2000,:], zeros(len(chirp)-1,dtype=float)), axis=0, out=None)
-X1 = np.concatenate((zeros(len(chirp)-1,dtype=float),mat['data_sint'][2000,:]), axis=0, out=None)
+X1 = np.concatenate((zeros(len(chirp)-1,dtype=float),X1), axis=0, out=None)
 A1 = fft(np.flip(X1),2048)/(len(X1)/2.0) 
-A= ifft(A1*A2)
+A= ifft(A1*chirp_conj_fft)*10000
+'''
+#print(len(A[0,:]))
+#fila_2000 = np.concatenate((np.concatenate((zeros(len(chirp)-1,dtype=float),mat['data_sint'][2000,:]), axis=0, out=None), zeros(len(chirp)-1,dtype=float)), axis=0, out=None)
+#print(matriz_cruz)
 
 if(graph_foco==1):
 	plt.figure()
-	A=abs(A)
-	#plt.pcolormesh(A)
-	plt.plot(A)
+	#plt.plot(mat['data_sint'][2000,:])
+	#plt.plot(chirp)
+	matriz_cruz=abs(matriz_cruz)
+	#plt.plot(np.abs(matriz_cruz[2000,:]))
 	plt.xlabel("Correlacion SAR_data_sint")
+	#mat=abs(mat)
+	plt.pcolormesh(matriz_cruz)
+	plt.colorbar()
 	plt.show()

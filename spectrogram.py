@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Ejemplo de espectrograma en Python
-
-Seniales y Sistemas - Curso 1 - FIUBA
-
-Se recomienda ver el help de la funcion ejecutando 
-    help(signal.spectrogram)
-"""
-
 from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,7 +68,7 @@ window = signal.hanning(win_size)
 f, t, Sxx = signal.spectrogram(chirp, fs, window,  return_onesided=False)
 f = np.fft.fftshift(f)
 Sxx = np.fft.fftshift(Sxx, axes=0)
-plt.pcolormesh(t,f,Sxx)
+plt.pcolormesh(Sxx)
 plt.title("Espectrograma Hanning")
 plt.ylabel('Frequency [Hz]')
 plt.xlabel('Time [sec]')
