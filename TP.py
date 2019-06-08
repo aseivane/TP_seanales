@@ -20,14 +20,14 @@ frec = ind*BW_rg/2
 window = signal.tukey(256) # ventana de Tukey de 256 muestras
 
 
-def chirp_rg(func_phase):
+def func_chirp(func_phase):
 	return(np.exp(1j*2*np.pi*func_phase))
 
 def tita(t, k1, k2):
 	return (k1*t**2 + t*k2)
 
 #***** Evaluo la chirp en el array time *****
-chirp = chirp_rg(tita(time, BW_rg/(2*T_rg),-BW_rg/2))
+chirp = func_chirp(tita(time, BW_rg/(2*T_rg),-BW_rg/2))
 chirp_fft = fft(chirp,2048)/(len(chirp)/2.0) 
 
 if(graph_chirp==1):
@@ -61,14 +61,14 @@ A=A[len(chirp)-1:] #le saco 500 puntos por la separacion ya que al invertir la c
 
 if(graph_autocor==1):
 	plt.figure()
-	plt.ylabel("Chirp(t)")
-	plt.xlabel("Tiempo")
-	plt.title("Chirp")
+	#plt.ylabel("Chirp(t)")
+	#plt.xlabel("Tiempo")
+	#plt.title("Chirp")
 	plt.plot(chirp)
 
 	#plt.figure()
-	plt.ylabel("Chirp2(t)")
-	plt.xlabel("Tiempo")
+	#plt.ylabel("Chirp2(t)")
+	#plt.xlabel("Tiempo")
 	plt.plot(X1)
 
 	#plt.figure()
@@ -90,17 +90,14 @@ if(graph_autocor==1):
 #***** Verificacion de enfoque *****
 mat = scipy.io.loadmat('SAR_data_sint.mat')
 mat=mat['data_sint']
-mat=np.transpose(mat)
+#mat=np.transpose(mat)
 
-#mat = scipy.io.loadmat('SAR_data_sarat.mat')
-#mat=mat['data']
-
-matriz_cruz = np.zeros( ( mat.shape[0] , mat.shape[0] ),dtype=complex ) #armamos la matriz A del tamaño que voy a necesitar
+matriz_cruz = np.zeros( ( mat.shape[0] , mat.shape[1] ),dtype=complex ) #armamos la matriz A del tamaño que voy a necesitar
 
 for i in range(0,mat.shape[0]-1):
 	fila = mat[i,:]
 	fila_flip_fft = fft(np.flip(fila),2048)/(len(fila)/2.0)
-	matriz_cruz[i,:] = ifft(fila_flip_fft*chirp_conj_fft)*1000# tiene tamaño 4250 x 2048
+	matriz_cruz[i,:] = ifft(fila_flip_fft*chirp_conj_fft)*1000# tiene tamaño 4250 x 2048 chirp del ej2 conjugada
 '''
 matriz_cruz =matriz_cruz[:,int(ceil(1.5*len(chirp)))-1:]
 
@@ -126,6 +123,7 @@ A= ifft(A1*chirp_conj_fft)*10000
 #fila_2000 = np.concatenate((np.concatenate((zeros(len(chirp)-1,dtype=float),mat['data_sint'][2000,:]), axis=0, out=None), zeros(len(chirp)-1,dtype=float)), axis=0, out=None)
 #print(matriz_cruz)
 
+'''
 if(graph_foco==1):
 	plt.figure()
 	#plt.plot(mat['data_sint'][2000,:])
@@ -135,5 +133,56 @@ if(graph_foco==1):
 	plt.xlabel("Correlacion SAR_data_sint")
 	#mat=abs(mat)
 	plt.pcolormesh(matriz_cruz)
+	plt.colorbar()
+	plt.show()
+'''
+####################################     COMPRESION EN ACIMUT     ##################################################################
+
+vel_plat=108
+long_onda=0.23
+ro=7545
+n_az=0.107
+T_az= n_az * ro / vel_plat
+fs_az=125
+time_az = np.r_[-T_az/2:T_az/2 + 1/fs_az:1/fs_az]
+
+K1_az=-(vel_plat**2)/(long_onda*ro)
+
+
+chirp_az = func_chirp(tita(time_az, K1_az,0))
+chirp_az_fft = fft(chirp_az,4250)/(len(chirp_az)/2.0) 
+
+
+#Preparo todo para la autocorrelacion de la chirp de acimut
+X2 = np.concatenate((chirp_az, zeros(len(chirp_az)-1,dtype=float)), axis=0, out=None)
+X2 = np.concatenate((zeros(len(chirp_az)-1,dtype=float),X2), axis=0, out=None)
+
+B1 = fft(np.flip(X2),4250)/(len(X2)/2.0) 
+chirp_az_conj_fft = fft(np.conjugate(chirp_az),4250)/(len(chirp_az)/2.0)
+
+B = ifft(B1*chirp_az_conj_fft)
+B=B[len(chirp_az)-1:]
+
+matriz_cruz2 = np.zeros( ( mat.shape[0] , mat.shape[1] ),dtype=complex ) #armamos la matriz A del tamaño que voy a necesitar
+matriz_cruz_final = np.zeros( ( mat.shape[0] , mat.shape[1] ),dtype=complex ) #armamos la matriz A del tamaño que voy a necesitar
+
+
+for i in range(0,mat.shape[1]-1):									#i se mueve de 0 a 2047
+	col = mat[:,i]													#tomo columna i de matriz de datos
+	col_flip_fft = fft(np.flip(col),4250)/(len(col)/2.0)			
+	matriz_cruz2[:,i] = ifft(col_flip_fft*chirp_az_conj_fft)*1000
+
+
+matriz_cruz_final = matriz_cruz + matriz_cruz2
+
+if(graph_foco==1):
+	plt.figure()
+	#plt.plot(mat['data_sint'][2000,:])
+	#plt.plot(chirp)
+	matriz_cruz_final=abs(matriz_cruz_final)
+	#plt.plot(np.abs(matriz_cruz[2000,:]))
+	plt.xlabel("Correlacion SAR_data_sint")
+	#mat=abs(mat)
+	plt.pcolormesh(matriz_cruz_final)
 	plt.colorbar()
 	plt.show()
